@@ -30,8 +30,9 @@ public class SecurityConfig {
         http
                 .csrf(csrf->csrf.disable())
                 .authorizeHttpRequests(auth-> auth
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/test/**").permitAll()
+                        .requestMatchers("/auth/api/**").permitAll()
+                        .requestMatchers("/admin/**").hasAnyAuthority("ROLE_ADMIN")
+                        .requestMatchers("/user/**").hasAuthority("ROLE_USER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session->session
@@ -39,6 +40,7 @@ public class SecurityConfig {
                 )
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthenticationfilter, UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
 
