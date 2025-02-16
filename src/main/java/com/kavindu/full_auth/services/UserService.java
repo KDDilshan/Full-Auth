@@ -4,19 +4,23 @@ import com.kavindu.full_auth.dto.Request.LoginDto;
 import com.kavindu.full_auth.dto.Request.RegisterDto;
 import com.kavindu.full_auth.dto.Response.AuthResponse;
 import com.kavindu.full_auth.entities.AppUser;
+import com.kavindu.full_auth.entities.RefreshToken;
 import com.kavindu.full_auth.entities.Roles;
+import com.kavindu.full_auth.repositoies.RefreshRepository;
 import com.kavindu.full_auth.repositoies.RoleRepository;
 import com.kavindu.full_auth.repositoies.UserRepostory;
 import com.kavindu.full_auth.security.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class UserService {
@@ -25,13 +29,15 @@ public class UserService {
     private final AuthenticationManager authenticationManager;
     private final RoleRepository roleRepository;
     private final JwtService jwtService;
+    private final RefreshRepository refreshRepository;
 
-    public UserService(UserRepostory userRepostory, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, RoleRepository roleRepository, JwtService jwtService) {
+    public UserService(UserRepostory userRepostory, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, RoleRepository roleRepository, JwtService jwtService, RefreshRepository refreshRepository) {
         this.userRepostory = userRepostory;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.roleRepository = roleRepository;
         this.jwtService = jwtService;
+        this.refreshRepository = refreshRepository;
     }
 
     public AppUser registerUser(RegisterDto request) {
@@ -64,13 +70,68 @@ public class UserService {
 
         System.out.println("user: " + user);
         String token = jwtService.generateToken(user);
+        String RefreshToken=jwtService.generateRefreshToken(user);
 
-        return new AuthResponse(token, user.getUsername(), user.getRoles());
+        RefreshToken exsitingRefreshToken=refreshRepository.findByUser(user);
+        if(exsitingRefreshToken !=null){
+            exsitingRefreshToken.setRefreshToken(RefreshToken);
+            exsitingRefreshToken.setExpiresIn(System.currentTimeMillis()+7*24*60*60*1000);
+            refreshRepository.save(exsitingRefreshToken);
+        }else{
+            RefreshToken rToken=new RefreshToken();
+            rToken.setRefreshToken(RefreshToken);
+            rToken.setUser(user);
+            rToken.setExpiresIn(System.currentTimeMillis() + 7*24*60*60*1000);
+            refreshRepository.save(rToken);
+        }
+
+        return new AuthResponse(token,RefreshToken, user.getUsername(), user.getRoles());
     }
 
 
+    public Map<String, String> getAccessToken(String refreshToken) {
+        RefreshToken refreshToken1=refreshRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new IllegalArgumentException("Refresh token not present"));
 
+        if(refreshToken1.getExpiresIn()<System.currentTimeMillis()){
+            throw  new RuntimeException("Refresh token expired");
+        }
+        AppUser user=refreshToken1.getUser();
+        String accessToken=jwtService.generateToken(user);
 
+        Map<String,String> tokens=new HashMap<>();
+        tokens.put("access_token",accessToken);
+        tokens.put("refresh_token",refreshToken);
+        return tokens;
+    }
 
+    public void logout(HttpServletRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null) {
+            System.out.println("User is not authenticated.");
+            return;
+        }
+
+        String email = authentication.getName(); // Get email
+        System.out.println("Logging out user: " + email);
+
+        request.getSession().invalidate();
+
+        RefreshToken refreshToken = refreshRepository.findByUserEmail(email).orElse(null);
+        if (refreshToken != null) {
+            AppUser user = refreshToken.getUser();
+            if (user != null) {
+                user.setRefreshToken(null);
+                userRepostory.save(user);
+            }
+
+            refreshRepository.delete(refreshToken);
+            System.out.println("Refresh token deleted for user: " + email);
+        } else {
+            System.out.println("No refresh token found for user: " + email);
+        }
+        SecurityContextHolder.clearContext();
+    }
 
 }
