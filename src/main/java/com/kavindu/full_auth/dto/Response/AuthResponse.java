@@ -17,11 +17,13 @@ import java.util.stream.Collectors;
 @Builder
 public class AuthResponse {
     private String token;
+    private String refreshToken;
     private String username;
     private List<String> roles;
 
-    public AuthResponse(String token, String username, Set<Roles> roles) {
+    public AuthResponse(String token,String refreshToken, String username, Set<Roles> roles) {
         this.token = token;
+        this.refreshToken = refreshToken;
         this.username = username;
         this.roles = roles.stream().map(Roles::getName).collect(Collectors.toList());
     }
