@@ -7,6 +7,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.Builder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,12 @@ public class JwtService {
     @Value("${security.jwt.secret-key}")
     private String secretKey;
 
+    @Value("${security.jwt.Refresh.secret-key}")
+    private String refreshSecretKey;
+
+    @Value("${security.jwt.refresh-expiration-time}")
+    private long refreshExpirationTime;
+
     @Value("${security.jwt.expiration-time}")
     private long jwtExpirationTime;
 
@@ -33,6 +40,10 @@ public class JwtService {
     public <T> T extractClaim(String token, Function<Claims,T> claimsResolver) {
         final Claims claims=extractAllClaims(token);
         return claimsResolver.apply(claims);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails) {
+        return buildToken(new HashMap<>(), userDetails, refreshExpirationTime);
     }
 
     public String generateToken(UserDetails userDetails) {
