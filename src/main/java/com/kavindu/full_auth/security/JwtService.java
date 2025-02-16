@@ -1,5 +1,7 @@
 package com.kavindu.full_auth.security;
 
+import com.kavindu.full_auth.entities.AppUser;
+import com.kavindu.full_auth.entities.Roles;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -14,6 +16,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
@@ -33,7 +36,11 @@ public class JwtService {
     }
 
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(),userDetails);
+        Map<String, Object> claims = new HashMap<>();
+        if (userDetails instanceof AppUser) {
+            claims.put("roles", ((AppUser) userDetails).getRoles().stream().map(Roles::getName).collect(Collectors.toList()));
+        }
+        return buildToken(claims, userDetails, jwtExpirationTime);
     }
 
     public String generateToken(Map<String, Object> extraClams, UserDetails userDetails) {
@@ -74,7 +81,7 @@ public class JwtService {
     }
 
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts
                 .parserBuilder()
                 .setSigningKey(getSignInKey())
