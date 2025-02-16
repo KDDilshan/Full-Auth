@@ -80,4 +80,7 @@ public class AppUser implements UserDetails {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Roles> roles = new HashSet<>();
+
+    @OneToOne(mappedBy = "user",cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private RefreshToken refreshToken;
 }
