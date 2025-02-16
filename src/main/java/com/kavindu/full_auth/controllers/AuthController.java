@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/auth/")
+@RequestMapping("/auth/api/")
 public class AuthController {
     private final JwtService jwtService;
     private final UserService userService;
@@ -28,11 +28,10 @@ public class AuthController {
         this.userService = userService;
     }
 
-    @PostMapping("/signup")
+    @PostMapping("/register")
     public ResponseEntity<?> RegisterUser(@RequestBody RegisterDto registerDto) {
         try{
-            System.out.println(registerDto);
-            AppUser registeredUser=userService.signup(registerDto);
+            AppUser registeredUser=userService.registerUser(registerDto);
             return ResponseEntity.ok(registeredUser);
         }catch (Exception e){
             Map<String, String> errorResponse = new HashMap<>();
@@ -43,14 +42,27 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> LoginUser(@RequestBody LoginDto loginDto) {
-        AppUser authenticatedUser=userService.authenticate(loginDto);
-
-        String token = jwtService.generateToken(authenticatedUser);
-
-        AuthResponse authResponse=new AuthResponse();
-        authResponse.setToken(token);
-        authResponse.setExpiresIn(jwtService.getJwtExpirationTime());
-        return ResponseEntity.ok(authResponse);
+    public ResponseEntity<?> LoginUser(@RequestBody LoginDto loginDto) {
+        try{
+            return ResponseEntity.ok(userService.loginUser(loginDto));
+        }catch (Exception e){
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
     }
+
+    @PostMapping("/Admin_Register")
+    public ResponseEntity<?> RegisterAdmin(@RequestBody RegisterDto registerDto) {
+        try{
+            AppUser registerdAdmin=userService.registerAdmin(registerDto);
+            return ResponseEntity.ok(registerdAdmin);
+        }catch (Exception e){
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+
 }
