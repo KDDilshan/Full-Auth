@@ -2,10 +2,12 @@ package com.kavindu.full_auth.controllers;
 
 import com.kavindu.full_auth.dto.Request.LoginDto;
 import com.kavindu.full_auth.dto.Request.RegisterDto;
+import com.kavindu.full_auth.dto.Request.TokenRequest;
 import com.kavindu.full_auth.dto.Response.AuthResponse;
 import com.kavindu.full_auth.entities.AppUser;
 import com.kavindu.full_auth.security.JwtService;
 import com.kavindu.full_auth.services.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,6 +59,36 @@ public class AuthController {
         try{
             AppUser registerdAdmin=userService.registerAdmin(registerDto);
             return ResponseEntity.ok(registerdAdmin);
+        }catch (Exception e){
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/Refresh")
+    public ResponseEntity<?> getAcessToken(@RequestBody TokenRequest request) {
+        try {
+            String refreshToken=request.getRefreshToken();
+            if(refreshToken==null){
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("refresh token is null");
+            }
+            Map<String,String> tokens=userService.getAccessToken(refreshToken);
+            return ResponseEntity.ok(tokens);
+        }catch (Exception e){
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/Logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        try{
+            userService.logout(request);
+            Map<String,String> response=new HashMap<>();
+            response.put("message","user logout Successfully");
+            return ResponseEntity.status(HttpStatus.OK).body(response);
         }catch (Exception e){
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", e.getMessage());
